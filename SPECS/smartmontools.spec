@@ -1,7 +1,7 @@
 Summary:	Tools for monitoring SMART capable hard disks
 Name:		smartmontools
-Version:	6.5
-Release:	1.1%{?dist}
+Version:	7.0
+Release:	2%{?dist}
 Epoch:		1
 Group:		System Environment/Base
 License:	GPLv2+
@@ -13,6 +13,8 @@ Source4:	smartdnotify
 #fedora/rhel specific
 Patch1:		smartmontools-5.38-defaultconf.patch
 Patch2:         smartmontools-6.2-up2datedrivedb.patch
+#from upstream, for smt <= 7.0
+Patch3:         smartmontools-7.0-cciss-smallbuf-segfault.patch
 
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Requires:	fileutils mailx
@@ -23,8 +25,8 @@ Requires(preun):	systemd-units
 Requires(postun):	systemd-units
 BuildRequires:	readline-devel ncurses-devel automake util-linux groff gettext
 BuildRequires:	libselinux-devel libcap-ng-devel
-BuildRequires:	systemd-units
-BuildRequires:  gcc-c++
+BuildRequires:	systemd systemd-libs systemd-devel
+BuildRequires: gcc-c++
 
 %description
 The smartmontools package contains two utility programs (smartctl
@@ -38,6 +40,7 @@ and failure.
 %setup -q 
 %patch1 -p1 -b .defaultconf
 %patch2 -p1 -b .up2datedrivedb
+%patch3 -p1 -b .segfault
 
 # fix encoding
 for fe in AUTHORS ChangeLog
@@ -49,7 +52,7 @@ done
 
 %build
 autoreconf -i
-%configure --with-selinux --with-libcap-ng=yes --with-systemdsystemunitdir=%{_unitdir} --sysconfdir=%{_sysconfdir}/%name/
+%configure --with-selinux --with-libcap-ng=yes --with-libsystemd --with-systemdsystemunitdir=%{_unitdir} --sysconfdir=%{_sysconfdir}/%name/
 %ifarch sparc64
 make CXXFLAGS="$RPM_OPT_FLAGS -fPIE" LDFLAGS="-pie -Wl,-z,relro,-z,now"
 %else
@@ -99,8 +102,9 @@ fi
 
 %files
 %defattr(-,root,root,-)
-%doc AUTHORS ChangeLog COPYING INSTALL NEWS README
+%doc AUTHORS ChangeLog INSTALL NEWS README
 %doc TODO examplescripts smartd.conf
+%license COPYING
 %dir %{_sysconfdir}/%name
 %dir %{_sysconfdir}/%name/smartd_warning.d
 %config(noreplace) %{_sysconfdir}/%{name}/smartd.conf
@@ -118,9 +122,12 @@ fi
 %{_sharedstatedir}/%{name}
 
 %changelog
-* Fri May 31 2019 Samuel Verschelde <stormi-xcp@ylix.fr> - 1:6.5-1.1
-- Add a /var/log/smartd directory and symlink /var/lib/smartmontools to it
-- This allows smartd to write an attribute log
+* Thu Nov 21 2019 Michal Hlavinka <mhlavink@redhat.com> - 1:7.0-1.0.bz1764958
+- fix smartctl crash when cciss answer is >512 bytes (#1764958)
+
+* Thu Feb 14 2019 Michal Hlavinka <mhlavink@redhat.com> - 1:7.0-1
+- smartmontools updated to 7.0 (#1588532)
+- fixed detection of Device Statistics log with 256 sectors (#1590190)
 
 * Wed Oct 11 2017 Michal Hlavinka <mhlavink@redhat.com> - 1:6.5-1
 - smartmontools updated to 6.5
